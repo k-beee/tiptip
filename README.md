@@ -1,156 +1,180 @@
-# ✦ TipTip: Conditional Tipping & Verification Escrow
+# ✦ TipTip: Programmatic Escrow & Subjective Milestone Verification
 
-**Secure, milestone-based tipping for web creators, verified by decentralized AI consensus.**
+A decentralized, trustless escrow tipping protocol on GenLayer. Fund creators with custom criteria, verified by independent AI consensus, with secure deadline-enforced refunds.
 
 ---
 
-🔗 **Vercel Deploy:** [tiptip-frontend.vercel.app](https://tiptip-frontend.vercel.app) (Replace with your live URL)  
+🔗 **Frontend Portal:** [tiptip-frontend.vercel.app](https://tiptip-frontend.vercel.app)  
 📜 **Contract (GenLayer Studionet):** `0x1A247D4F65a92Ec862b8dBCa05215e481b64bE89`
 
 ---
 
-## 1. Executive Summary
+## I. Protocol Overview & The Trust Gap
 
-Traditional content tipping and micro-patronage rely on blind faith. Supporters send funds upfront hoping the creator will produce high-quality work, research a topic honestly, or write promised features. When creators underdeliver, use low-effort AI copy-paste, or fail to follow through, supporters have no recourse—leading to donor fatigue and reduced patronage.
+Online tipping and creator sponsorship suffer from a fundamental trust gap. Supporters deposit capital upfront based on social promises, with no programmatic guarantee of delivery or quality. If creators produce low-effort content, recycle old work, or fail to follow through, supporters have no recourse. This friction discourages high-value micro-patronage.
 
-**TipTip** resolves this trust deficit. It introduces **Conditional Escrow Tipping**:
-* Tippers lock funds in a secure smart contract along with a specific description of what they expect (e.g., "Write a deep dive about GenLayer validator economics").
-* Creators register their work by providing a live Web URL showing proof of execution.
-* GenLayer's independent AI validators fetch the live webpage content, analyze it against the tipper's specific criteria, and reach consensus on whether to release the escrow.
-* If the creator fails to meet the deadline, the tipper can claim their funds back.
+**TipTip** resolves this trust gap by introducing **Conditional Escrow Tipping**:
+* **Milestone Escrow:** Supporter funds are locked in the smart contract, bound to a specific natural-language milestone description and an expiry deadline.
+* **On-Chain Oracles:** Creators submit a live Web URL as proof of completion.
+* **Subjective Consensus:** GenLayer’s decentralized AI validators read the live page content, verify it against the locked criteria, and vote on-chain to release the funds.
+* **Deterministic Expiry:** If the milestone remains unverified past the deadline, the tipper reclaims 100% of their locked capital.
+
+> [!NOTE]
+> Unlike standard oracles that only fetch raw API data, TipTip utilizes GenLayer to perform **subjective semantic verification** of unstructured human work (like articles, code releases, or video uploads) against natural-language criteria.
 
 ---
 
-## 2. System Workflow (Dragon Chart)
+## II. State Machine & Escrow Lifecycle
 
 ```
-                       [ Tipper Creates Tip ]
-                                 │
-                                 ▼
-                     Locks GEN in secure Escrow
-                     (Criteria + Deadline set)
-                                 │
-                                 ├────────────────────────┐
-                                 ▼                        ▼
-                       [ Creator Works ]           [ Time Passes ]
-                                 │                        │
-                                 ▼                        ▼
-                       Updates Proof URL          Deadline Exceeded?
-                                 │                        │
-                                 ▼                        ▼
-                       [ Trigger Verification ]    [ claim_refund ]
-                                 │                        │
-                                 ▼                        ▼
-                        GenLayer Consensus         Reclaim Locked GEN
-                    (Validators fetch Proof)       (Returned to Tipper)
-                                 │
-                                 ▼
-                         AI Checks Proof
-                        against Criteria
-                                 │
-               ┌─────────────────┴─────────────────┐
-               ▼                                   ▼
-          [ Verify Pass ]                    [ Verify Fail ]
-               │                                   │
-               ▼                                   ▼
-        Release GEN to Creator            Escrow remains Pending
-       (Settle Transaction)            (Creator can refine URL)
+                       [ Fund Milestone ]
+                               │
+                               ▼
+                   GEN Capital Locked in Escrow
+                   (Criteria + Expiry Deadline)
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+         [ Submit Proof ]              [ Expiry Timeout ]
+                │                             │
+                ▼                             ▼
+       Updates Proof URL               Deadline Passed?
+                │                             │
+                ▼                             ▼
+      [ Trigger Verification ]          [ Claim Refund ]
+                │                             │
+                ▼                             ▼
+        GenLayer Consensus            Funds Returned to Tipper
+     (Validators Fetch Web Page)         (Escrow Terminated)
+                │
+                ▼
+        Subjective AI Review
+       (Equivalence Principle)
+                │
+        ┌───────┴───────┐
+        ▼               ▼
+    [ PASS ]        [ FAIL ]
+        │               │
+        ▼               ▼
+  Release Capital  Remains Pending
+    to Creator     (Refined URL/Try Again)
 ```
 
 ---
 
-## 3. Intelligent Contract API (`contracts/tiptip.py`)
+## III. Cryptographic VM Determinism & Timestamps
 
-The contract is written in Py-GenLayer and compiles to GenVM. It enforces complete execution determinism by utilizing client-provided timestamps instead of physical server clocks, preventing validator state-root divergence.
+One of the primary challenges in consensus-based execution environments is avoiding non-deterministic state evaluation.
 
-### Write Methods
+> [!WARNING]
+> Calling system-level clocks (like `datetime.now()` in Python) inside write transactions causes validators to generate different storage outputs depending on their physical clock synchronization. This leads to state root mismatches and consensus failures.
 
-#### `create_tip(creator, criteria, proof_url, duration_days, client_now) -> i32 (payable)`
-Locks `gl.message.value` in escrow.
-* `creator` (str): Wallet address of the content creator.
-* `criteria` (str): Plain-text milestone instructions the creator must fulfill.
-* `proof_url` (str): Initial webpage where proof will be hosted (can be empty).
-* `duration_days` (i32): Expiry countdown. After this elapsed period, the tipper can reclaim the escrow.
-* `client_now` (i32): Current Unix timestamp passed from the client for VM determinism.
-
-#### `update_proof_url(tip_id, new_url)`
-Allows the creator to set or update the proof link as their work progresses.
-* Restricted: Only the designated `creator` of the specific tip can invoke this method.
-
-#### `verify_and_release(tip_id)`
-Triggers the AI validator consensus loop.
-* Validators query the `proof_url` via `gl.nondet.web.get()`.
-* An LLM evaluates the text content against the custom `criteria`.
-* The **Equivalence Principle** enforces exact agreement on the boolean verdict (`verified`) and a tolerance of $\le 2$ points on the numeric score.
-* If verification passes, the contract executes an EVM transfer paying the creator.
-
-#### `claim_refund(tip_id, client_now)`
-Allows the tipper to reclaim their escrowed GEN.
-* Restricted: Only the original `tipper` of the specific tip can call this.
-* Condition: Executable only if `client_now` is greater than or equal to the tip's `deadline`.
-
-### View Methods
-
-#### `get_tip(tip_id) -> str`
-Returns the JSON representation of a specific tip.
-
-#### `get_tip_count() -> i32`
-Returns the total count of tips created.
-
-#### `get_tips(start, limit) -> list[str]`
-Optimized paginated batch reader. Allows the frontend to fetch multiple tips in a single RPC query, solving sequential loop-loading delays.
+**TipTip** resolves this by enforcing **Client-Provided Deterministic Timestamps**:
+1. When creating a tip or claiming a refund, the client computes the current Unix epoch (`Math.floor(Date.now() / 1000)`) and passes it as a transaction argument (`client_now`).
+2. The contract uses this argument to compute and write the exact deadline deterministically:
+   $$\text{deadline} = \text{client\_now} + (\text{duration\_days} \times 86400)$$
+3. All validators process the exact same integer timestamp, guaranteeing complete consensus finalization.
 
 ---
 
-## 4. Frontend & Integration Features
+## IV. Intelligent Contract Interface Spec (`contracts/tiptip.py`)
 
-The web client is built with **Next.js (static export)** and **TypeScript** under a refined, editorial dark-mode theme.
+The contract stores tip escrows in a native `TreeMap[str, str]` (mapping `tip_id` to serialized JSON strings) to optimize space and validator lookup performance.
 
-* **Direct EVM Integration (No Snap Needed):** The wallet manager switches standard EVM wallets (MetaMask, Rabby) to the GenLayer Studionet chain parameters. Signing is handled via standard EVM JSON-RPC provider calls, removing the need for specialized browser Snap plugins.
-* **Granular Transaction Feedback:** The client polls transaction hashes for terminal states, displaying friendly diagnostics if transactions fail consensus (`UNDETERMINED`) or time out (`VALIDATORS_TIMEOUT`).
-* **Performance Enhancements:** Uses the paginated contract query to load all active escrow records in a single RPC trip.
+### 1. Write Operations
+
+* **`create_tip(creator: str, criteria: str, proof_url: str, duration_days: i32, client_now: i32) -> i32 (payable)`**
+  Initializes a new escrow tip. Receives the locked `gl.message.value` and returns the incremental `tip_id`.
+  > [!IMPORTANT]
+  > Reverts with `UserError` if `gl.message.value == 0`.
+
+* **`update_proof_url(tip_id: str, new_url: str) -> None`**
+  Updates the target proof link for verification.
+  * *Access Control:* Restricted exclusively to the `creator` address declared in the tip configuration.
+  * *Constraint:* Reverts if the tip status is not `0` (Pending).
+
+* **`verify_and_release(tip_id: str) -> None`**
+  Triggers the decentralized AI verification loop. Queries the proof page, parses content, runs consensus, and transfers funds on validation.
+
+* **`claim_refund(tip_id: str, client_now: i32) -> None`**
+  Allows the tipper to reclaim the locked GEN funds.
+  * *Access Control:* Restricted exclusively to the `tipper` address.
+  * *Constraint:* Reverts if `client_now` is less than the tip's computed `deadline`.
+
+### 2. View Operations
+
+* **`get_tip(tip_id: str) -> str`**
+  Returns the raw JSON metadata of a specific tip escrow.
+
+* **`get_tip_count() -> i32`**
+  Returns the total count of tips registered.
+
+* **`get_tips(start: i32, limit: i32) -> list[str]`**
+  **Paginated batch reader.** Avoids loop-based RPC roundtrips by retrieving multiple tips in a single call, optimizing network overhead and frontend load speeds.
 
 ---
 
-## 5. Local Setup & Deployment
+## V. Subjective Consensus & The Equivalence Principle
 
-### Smart Contract Linting
-Ensure `genvm-linter` is installed, then run the validation check:
+When `verify_and_release` is invoked, GenLayer validators run an independent consensus round using the **Equivalence Principle** to grade the creator's proof:
+
+```python
+# Normalized output validation schema
+{
+    "verified": True or False,
+    "quality_score": 1-10,
+    "reasoning": "Reasoning string"
+}
+```
+
+1. **Output Normalization:** The leader and validators run `_parse_verdict()` to strip markdown JSON fences and coerce the model's text into structured fields (`bool` and `int`). This prevents validators from disagreeing over minor text formatting differences (e.g. whitespace, capitalization, JSON markdown styling).
+2. **Semantic Verification:** In `validator_fn`, the validator checks if:
+   * The boolean `verified` decision matches the leader's decision exactly.
+   * The numeric `quality_score` matches within a tolerance of $\pm 2$ points.
+3. **Agreement:** If the validators agree on the semantic verdict, consensus is reached, the transaction commits, and funds are disbursed via an EVM transfer.
+
+---
+
+## VI. Frontend Integration & Wallet Architecture
+
+The Next.js client is configured to deliver a premium user experience while bypassing typical dApp onboarding friction:
+
+* **Direct EVM provider switch:** Bypasses browser Snap plugins. It uses the MetaMask/Rabby provider directly to switch the client's wallet to the **GenLayer Studio Network** parameters (Chain ID `61999`, RPC `https://studio.genlayer.com/api`).
+* **Terminal Status Mapping:** The transaction monitor polls for terminal consensus states (`ACCEPTED`, `FINALIZED`, `UNDETERMINED`, `VALIDATORS_TIMEOUT`) to display precise, user-friendly feedback if consensus fails or times out.
+
+---
+
+## VII. Developer Setup & Simulation Suite
+
+### 1. Compile & Lint Check
+Ensure your py-genlayer environment is set up and run the static linter:
 ```bash
-# Install genlayer tools
+# Install linter
 pip install genvm-linter
 
-# Verify contract
+# Execute validation checks
 genvm-lint check contracts/tiptip.py
 ```
 
-### Local Simulation Tests
-Run the mock test suite to verify contract flow locally in Python:
+### 2. Local Simulation Tests
+Run the mock test suite to simulate state transitions, deadlines, and validation logic locally in Python:
 ```bash
 python3 tests/test_tiptip.py
 ```
 
-### Deploying the Contract
+### 3. Deploy to Testnet
 ```bash
-# Set network targets
+# Point CLI to Studionet
 genlayer network set studionet
+
+# Unlock deployer account
 genlayer account unlock
 
-# Deploy
+# Deploy contract
 genlayer deploy --contract contracts/tiptip.py
-```
-
-### Frontend Development
-1. Navigate to the `frontend/` directory.
-2. Edit `next.config.js` to point `NEXT_PUBLIC_CONTRACT_ADDRESS` to your deployed contract address.
-3. Install dependencies and start the dev server:
-```bash
-cd frontend
-npm install
-npm run dev
 ```
 
 ---
 
-## 6. License
-MIT License.
+## VIII. License
+Distributed under the MIT License.
