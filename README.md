@@ -1,15 +1,15 @@
-# ✦ TipTip: Programmatic Escrow & Subjective Milestone Verification
+# TipTip: Programmatic Escrow and Subjective Milestone Verification
 
 A decentralized, trustless escrow tipping protocol on GenLayer. Fund creators with custom criteria, verified by independent AI consensus, with secure deadline-enforced refunds.
 
 ---
 
-🔗 **Frontend Portal:** [tiptip-seven.vercel.app](https://tiptip-seven.vercel.app/)  
-📜 **Contract (GenLayer Studionet):** `0x1A247D4F65a92Ec862b8dBCa05215e481b64bE89`
+**Frontend Portal:** [tiptip-seven.vercel.app](https://tiptip-seven.vercel.app/)  
+**Contract (GenLayer Studionet):** `0x1A247D4F65a92Ec862b8dBCa05215e481b64bE89`
 
 ---
 
-## I. Protocol Overview & The Trust Gap
+## Protocol Overview and the Trust Gap
 
 Online tipping and creator sponsorship suffer from a fundamental trust gap. Supporters deposit capital upfront based on social promises, with no programmatic guarantee of delivery or quality. If creators produce low-effort content, recycle old work, or fail to follow through, supporters have no recourse. This friction discourages high-value micro-patronage.
 
@@ -24,7 +24,7 @@ Online tipping and creator sponsorship suffer from a fundamental trust gap. Supp
 
 ---
 
-## II. State Machine & Escrow Lifecycle
+## State Machine and Escrow Lifecycle
 
 ```
                        [ Fund Milestone ]
@@ -62,7 +62,7 @@ Online tipping and creator sponsorship suffer from a fundamental trust gap. Supp
 
 ---
 
-## III. Cryptographic VM Determinism & Timestamps
+## Cryptographic VM Determinism and Timestamps
 
 One of the primary challenges in consensus-based execution environments is avoiding non-deterministic state evaluation.
 
@@ -77,11 +77,11 @@ One of the primary challenges in consensus-based execution environments is avoid
 
 ---
 
-## IV. Intelligent Contract Interface Spec (`contracts/tiptip.py`)
+## Intelligent Contract Interface Specification (`contracts/tiptip.py`)
 
 The contract stores tip escrows in a native `TreeMap[str, str]` (mapping `tip_id` to serialized JSON strings) to optimize space and validator lookup performance.
 
-### 1. Write Operations
+### Write Operations
 
 * **`create_tip(creator: str, criteria: str, proof_url: str, duration_days: i32, client_now: i32) -> i32 (payable)`**
   Initializes a new escrow tip. Receives the locked `gl.message.value` and returns the incremental `tip_id`.
@@ -101,7 +101,7 @@ The contract stores tip escrows in a native `TreeMap[str, str]` (mapping `tip_id
   * *Access Control:* Restricted exclusively to the `tipper` address.
   * *Constraint:* Reverts if `client_now` is less than the tip's computed `deadline`.
 
-### 2. View Operations
+### View Operations
 
 * **`get_tip(tip_id: str) -> str`**
   Returns the raw JSON metadata of a specific tip escrow.
@@ -114,7 +114,7 @@ The contract stores tip escrows in a native `TreeMap[str, str]` (mapping `tip_id
 
 ---
 
-## V. Subjective Consensus & The Equivalence Principle
+## Subjective Consensus and the Equivalence Principle
 
 When `verify_and_release` is invoked, GenLayer validators run an independent consensus round using the **Equivalence Principle** to grade the creator's proof:
 
@@ -135,7 +135,7 @@ When `verify_and_release` is invoked, GenLayer validators run an independent con
 
 ---
 
-## VI. Frontend Integration & Wallet Architecture
+## Frontend Integration and Wallet Architecture
 
 The Next.js client is configured to deliver a premium user experience while bypassing typical dApp onboarding friction:
 
@@ -144,9 +144,9 @@ The Next.js client is configured to deliver a premium user experience while bypa
 
 ---
 
-## VII. Developer Setup & Simulation Suite
+## Developer Setup and Simulation Suite
 
-### 1. Compile & Lint Check
+### 1. Compile and Lint Check
 Ensure your py-genlayer environment is set up and run the static linter:
 ```bash
 # Install linter
@@ -176,5 +176,5 @@ genlayer deploy --contract contracts/tiptip.py
 
 ---
 
-## VIII. License
+## License
 Distributed under the MIT License.
