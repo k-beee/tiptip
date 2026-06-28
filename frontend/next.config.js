@@ -3,7 +3,7 @@ const nextConfig = {
   output: "export",
   images: { unoptimized: true },
   env: {
-    NEXT_PUBLIC_CONTRACT_ADDRESS: "0x4f079033484B806e42385E53bE20209B89049Bee"
+    NEXT_PUBLIC_CONTRACT_ADDRESS: "0x1A247D4F65a92Ec862b8dBCa05215e481b64bE89"
   }
 };
 module.exports = nextConfig;
