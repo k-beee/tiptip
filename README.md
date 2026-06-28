@@ -26,38 +26,35 @@ Online tipping and creator sponsorship suffer from a fundamental trust gap. Supp
 
 ## State Machine and Escrow Lifecycle
 
-```
-                       [ Fund Milestone ]
-                               │
-                               ▼
-                   GEN Capital Locked in Escrow
-                   (Criteria + Expiry Deadline)
-                               │
-                ┌──────────────┴──────────────┐
-                ▼                             ▼
-         [ Submit Proof ]              [ Expiry Timeout ]
-                │                             │
-                ▼                             ▼
-       Updates Proof URL               Deadline Passed?
-                │                             │
-                ▼                             ▼
-      [ Trigger Verification ]          [ Claim Refund ]
-                │                             │
-                ▼                             ▼
-        GenLayer Consensus            Funds Returned to Tipper
-     (Validators Fetch Web Page)         (Escrow Terminated)
-                │
-                ▼
-        Subjective AI Review
-       (Equivalence Principle)
-                │
-        ┌───────┴───────┐
-        ▼               ▼
-    [ PASS ]        [ FAIL ]
-        │               │
-        ▼               ▼
-  Release Capital  Remains Pending
-    to Creator     (Refined URL/Try Again)
+```mermaid
+graph TD
+    classDef user fill:#18181b,stroke:#27272a,stroke-width:1px,color:#f4f4f5;
+    classDef contract fill:#1e1e24,stroke:#d4af37,stroke-width:2px,color:#f4f4f5;
+    classDef consensus fill:#0f172a,stroke:#3b82f6,stroke-width:1px,color:#f4f4f5;
+
+    Tipper[Tipper / Patron]:::user
+    Creator[Creator]:::user
+
+    subgraph TipTip Contract on GenLayer
+        EscrowState["Escrow Record<br/>- Creator Address<br/>- Locked Capital (GEN)<br/>- Semantic Criteria<br/>- Proof URL<br/>- Deadline Timestamp"]:::contract
+    end
+
+    subgraph GenLayer Decentralized Network
+        LeaderNode["Leader Node<br/>- Fetches URL content<br/>- Prompts primary LLM<br/>- Proposes Verdict JSON"]:::consensus
+        Validators["AI Validators<br/>- Fetch URL content<br/>- Compare output semantic consensus<br/>- Vote (Equivalence Principle)"]:::consensus
+    end
+
+    Tipper -- "1. Create Escrow (Locks GEN, sets criteria and deadline)" --> EscrowState
+    Creator -- "2. Submits deliverables and updates Proof URL" --> EscrowState
+    Creator -- "3. Triggers verification" --> LeaderNode
+    
+    EscrowState -. "Read criteria and URL" .-> LeaderNode
+    LeaderNode -- "4. Proposes Verdict" --> Validators
+    Validators -- "5. Validates Verdict (Tolerance +-2 score)" --> EscrowState
+
+    EscrowState -- "6a. Verification Passes (Release GEN)" --> Creator
+    Tipper -- "6b. Expiry Passes (Claim Refund)" --> EscrowState
+    EscrowState -- "7. Reclaim GEN" --> Tipper
 ```
 
 ---
