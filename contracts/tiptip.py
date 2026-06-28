@@ -131,3 +131,88 @@ class TipTip(gl.Contract):
             
         tip_data["proof_url"] = new_url
         self.tips[tip_id] = json.dumps(tip_data)
+
+    @gl.public.write
+    def verify_and_release(self, tip_id: str) -> typing.Any:
+        """Run AI consensus to evaluate proof URL content and release funds.
+        
+        Args:
+            tip_id (str): The ID of the tip to evaluate.
+        """
+        if tip_id not in self.tips:
+            raise gl.vm.UserError("Tip does not exist")
+            
+        tip_data = json.loads(self.tips[tip_id])
+        if tip_data["status"] != 0:
+            raise gl.vm.UserError("Tip has already been processed")
+            
+        url = tip_data["proof_url"]
+        if not url or url.strip() == "":
+            raise gl.vm.UserError("Proof URL is not set")
+            
+        criteria = tip_data["criteria"]
+        creator = tip_data["creator"]
+
+        def leader_fn():
+            # Fetch content of the proof page
+            web_data = gl.nondet.web.get(url).body.decode("utf-8", errors="ignore")
+            
+            prompt = f"""You are evaluating a content creator's proof of work to determine if an escrowed tip should be released.
+
+CREATOR: {creator}
+PROOF URL: {url}
+REQUIRED CRITERIA: {criteria}
+
+WEBPAGE CONTENT (first 3000 characters):
+{web_data[:3000]}
+
+Evaluate:
+1. Does the webpage content verify that the creator has fulfilled the required criteria?
+2. Is there clear evidence of work on this page that matches the criteria?
+
+Return ONLY a valid JSON object, with no markdown fences and no extra text:
+{{
+    "verified": true or false,
+    "quality_score": 1-10,
+    "reasoning": "brief explanation of how the criteria were met or why they failed"
+}}"""
+            response = gl.nondet.exec_prompt(prompt)
+            # Normalize model output to prevent validator consensus mismatches on formatting noise
+            return _parse_verdict(response)
+
+        def validator_fn(leader_result) -> bool:
+            if not isinstance(leader_result, gl.vm.Return):
+                return False
+            leader_data = leader_result.calldata
+            if not isinstance(leader_data, dict):
+                return False
+            validator_data = leader_fn()
+            
+            # Equivalence principle verification:
+            # 1. Exact match on 'verified' boolean verdict.
+            # 2. Score must be close within a tolerance of 2 points.
+            return (leader_data.get("verified") == validator_data.get("verified")
+                    and abs(leader_data.get("quality_score", 0) - validator_data.get("quality_score", 0)) <= 2)
+
+        result = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+
+        amount = u256(int(tip_data["amount"]))
+        if result["verified"]:
+            tip_data["status"] = 1
+            self._pay(tip_data["creator"], amount)
+        else:
+            # Leave status as 0 (Pending) so they can fix and try again.
+            # Storing the review result lets the creator see why it failed.
+            pass
+
+        tip_data["review"] = json.dumps(result)
+        self.tips[tip_id] = json.dumps(tip_data)
+
+    def _pay(self, recipient: str, amount: u256) -> None:
+        @gl.evm.contract_interface
+        class _Recipient:
+            class View:
+                pass
+            class Write:
+                pass
+        _Recipient(Address(recipient)).emit_transfer(value=amount)
