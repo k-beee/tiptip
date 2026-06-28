@@ -4,7 +4,7 @@ A decentralized, trustless escrow tipping protocol on GenLayer. Fund creators wi
 
 ---
 
-🔗 **Frontend Portal:** [tiptip-frontend.vercel.app](https://tiptip-frontend.vercel.app)  
+🔗 **Frontend Portal:** [tiptip-seven.vercel.app](https://tiptip-seven.vercel.app/)  
 📜 **Contract (GenLayer Studionet):** `0x1A247D4F65a92Ec862b8dBCa05215e481b64bE89`
 
 ---
