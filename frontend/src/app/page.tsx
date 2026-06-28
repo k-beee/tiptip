@@ -544,7 +544,8 @@ export default function Home() {
               </li>
             </ul>
           </div>
-        </main>
+        </section>
+      </main>
 
         <footer className="brand-footer">
           <p>
@@ -1210,7 +1211,6 @@ export default function Home() {
             font-family: var(--font-mono);
           }
         `}</style>
-      </main>
     </div>
   );
 }
