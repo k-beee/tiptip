@@ -1,5 +1,14 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
+"""
+TipTip Intelligent Contract
+===========================
+A decentralized escrow tipping system on GenLayer. It allows tippers to lock
+funds (GEN) in escrow for content creators under specific criteria. The tip is
+only released to the creator if GenLayer's AI consensus verifies the criteria
+against a live proof URL. Tippers can reclaim their funds if the deadline passes.
+"""
+
 from genlayer import *
 import json
 import typing
