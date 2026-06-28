@@ -5,7 +5,7 @@
 ---
 
 🔗 **Vercel Deploy:** [tiptip-frontend.vercel.app](https://tiptip-frontend.vercel.app) (Replace with your live URL)  
-📜 **Contract (GenLayer Studionet):** `0x4f079033484B806e42385E53bE20209B89049Bee` (Replace with your deployed address)
+📜 **Contract (GenLayer Studionet):** `0x1A247D4F65a92Ec862b8dBCa05215e481b64bE89`
 
 ---
 
