@@ -73,3 +73,40 @@ class TipTip(gl.Contract):
     def __init__(self):
         """Initialize the contract state with a zero tip counter."""
         self.tip_count = i32(0)
+
+    @gl.public.write.payable
+    def create_tip(self, creator: str, criteria: str, proof_url: str, duration_days: i32, client_now: i32) -> i32:
+        """Create a conditional escrow tip with a deadline and specific criteria.
+        
+        Args:
+            creator (str): The address of the content creator.
+            criteria (str): The specific performance or quality conditions the creator must meet.
+            proof_url (str): The initial URL where proof of work is expected to be published.
+            duration_days (i32): Number of days until the tipper can claim a refund if unverified.
+            client_now (i32): Deterministic Unix timestamp provided by the client.
+            
+        Returns:
+            i32: The new tip's sequential ID.
+        """
+        value = gl.message.value
+        if value == u256(0):
+            raise gl.vm.UserError("Tip amount must be greater than zero")
+
+        self.tip_count = i32(int(self.tip_count) + 1)
+        tip_id = str(int(self.tip_count))
+        deadline = int(client_now) + int(duration_days) * 86400
+
+        tip_data = {
+            "id": tip_id,
+            "tipper": str(gl.message.sender_address),
+            "creator": creator,
+            "amount": str(value),
+            "criteria": criteria,
+            "proof_url": proof_url,
+            "status": 0, # 0 = Pending, 1 = Verified & Released, 2 = Refunded
+            "deadline": deadline,
+            "created_at": int(client_now),
+            "review": ""
+        }
+        self.tips[tip_id] = json.dumps(tip_data)
+        return self.tip_count
