@@ -64,3 +64,12 @@ def _parse_verdict(raw: str) -> dict:
         "quality_score": _coerce_score(data.get("quality_score", 0)),
         "reasoning": str(data.get("reasoning", "")).strip()[:500],
     }
+
+
+class TipTip(gl.Contract):
+    tip_count: i32
+    tips: TreeMap[str, str] # Maps tip_id (str) -> JSON serialized tip details
+
+    def __init__(self):
+        """Initialize the contract state with a zero tip counter."""
+        self.tip_count = i32(0)
