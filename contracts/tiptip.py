@@ -110,3 +110,24 @@ class TipTip(gl.Contract):
         }
         self.tips[tip_id] = json.dumps(tip_data)
         return self.tip_count
+
+    @gl.public.write
+    def update_proof_url(self, tip_id: str, new_url: str) -> None:
+        """Allow the designated creator of a tip to update the proof URL.
+        
+        Args:
+            tip_id (str): The ID of the tip to update.
+            new_url (str): The new URL pointing to the proof of work.
+        """
+        if tip_id not in self.tips:
+            raise gl.vm.UserError("Tip does not exist")
+            
+        tip_data = json.loads(self.tips[tip_id])
+        if tip_data["status"] != 0:
+            raise gl.vm.UserError("Tip has already been processed")
+            
+        if str(gl.message.sender_address) != tip_data["creator"]:
+            raise gl.vm.UserError("Only the designated creator can update the proof URL")
+            
+        tip_data["proof_url"] = new_url
+        self.tips[tip_id] = json.dumps(tip_data)
