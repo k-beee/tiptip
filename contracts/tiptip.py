@@ -208,6 +208,33 @@ Return ONLY a valid JSON object, with no markdown fences and no extra text:
         tip_data["review"] = json.dumps(result)
         self.tips[tip_id] = json.dumps(tip_data)
 
+    @gl.public.write
+    def claim_refund(self, tip_id: str, client_now: i32) -> None:
+        """Allow the tipper to reclaim their escrowed funds if the deadline has passed.
+        
+        Args:
+            tip_id (str): The ID of the tip to reclaim.
+            client_now (i32): Deterministic Unix timestamp provided by the client.
+        """
+        if tip_id not in self.tips:
+            raise gl.vm.UserError("Tip does not exist")
+            
+        tip_data = json.loads(self.tips[tip_id])
+        if tip_data["status"] != 0:
+            raise gl.vm.UserError("Tip has already been processed")
+            
+        if str(gl.message.sender_address) != tip_data["tipper"]:
+            raise gl.vm.UserError("Only the tipper can claim a refund")
+            
+        if int(client_now) < int(tip_data["deadline"]):
+            raise gl.vm.UserError("Cannot claim refund before the deadline")
+            
+        tip_data["status"] = 2 # Refunded
+        self.tips[tip_id] = json.dumps(tip_data)
+        
+        amount = u256(int(tip_data["amount"]))
+        self._pay(tip_data["tipper"], amount)
+
     def _pay(self, recipient: str, amount: u256) -> None:
         @gl.evm.contract_interface
         class _Recipient:
