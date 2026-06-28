@@ -243,3 +243,52 @@ Return ONLY a valid JSON object, with no markdown fences and no extra text:
             class Write:
                 pass
         _Recipient(Address(recipient)).emit_transfer(value=amount)
+
+    @gl.public.view
+    def get_tip(self, tip_id: str) -> str:
+        """Fetch the JSON serialized details of a specific tip.
+        
+        Args:
+            tip_id (str): The ID of the tip.
+            
+        Returns:
+            str: The JSON string of tip details.
+        """
+        if tip_id not in self.tips:
+            raise gl.vm.UserError("Tip does not exist")
+        return self.tips[tip_id]
+
+    @gl.public.view
+    def get_tip_count(self) -> i32:
+        """Fetch the total count of tips registered in the contract.
+        
+        Returns:
+            i32: The total number of tips.
+        """
+        return self.tip_count
+
+    @gl.public.view
+    def get_tips(self, start: i32, limit: i32) -> typing.List[str]:
+        """Fetch a paginated list of JSON serialized tip details.
+        
+        This prevents the frontend from needing to perform sequential RPC polling loops,
+        improving performance and data loading times significantly.
+        
+        Args:
+            start (i32): The starting tip ID (inclusive).
+            limit (i32): The maximum number of tips to return.
+            
+        Returns:
+            typing.List[str]: A list of JSON strings representing tips.
+        """
+        out = []
+        count = int(self.tip_count)
+        s = int(start)
+        l = int(limit)
+        if s < 1:
+            s = 1
+        for i in range(s, min(s + l, count + 1)):
+            tip_id = str(i)
+            if tip_id in self.tips:
+                out.append(self.tips[tip_id])
+        return out
